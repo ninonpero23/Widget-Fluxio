@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fluxio — Widget</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, 'Inter', BlinkMacSystemFont, sans-serif;
+  background: transparent;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ════════════════════════════════
+   BOUTON FLOTTANT
+════════════════════════════════ */
+#fab {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 999;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  animation: fabIn .55s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes fabIn {
+  from { opacity:0; transform:scale(.3) translateY(30px); }
+  to   { opacity:1; transform:scale(1) translateY(0); }
+}
+
+.fab-pill {
+  display: flex; align-items: center; gap: 10px;
+  background: #1E1E49;
+  padding: 10px 18px 10px 8px;
+  border-radius: 100px;
+  box-shadow: 0 6px 28px rgba(30,30,73,.38), 0 2px 8px rgba(30,30,73,.22);
+  position: relative;
+  transition: transform .18s ease, box-shadow .18s ease;
+  white-space: nowrap;
+}
+.fab-pill:hover {
+  transform: scale(1.04);
+  box-shadow: 0 10px 36px rgba(76,206,192,.42), 0 4px 12px rgba(30,30,73,.3);
+}
+.fab-logo { width: 36px; height: 36px; object-fit: contain; border-radius: 8px; flex-shrink:0; }
+.fab-label { font-size: 14px; font-weight: 700; color: #fff; letter-spacing: -.1px; }
+.fab-teal { color: #4CCEC0; }
+
+/* Anneaux pulsation */
+.ring {
+  position: absolute; inset: -7px; border-radius: 100px;
+  border: 2.5px solid rgba(76,206,192,.55);
+  animation: ripple 2s ease-out infinite;
+  pointer-events: none;
+}
+.ring-2 {
+  position: absolute; inset: -16px; border-radius: 100px;
+  border: 1.5px solid rgba(76,206,192,.28);
+  animation: ripple 2s ease-out infinite .6s;
+  pointer-events: none;
+}
+@keyframes ripple {
+  0%   { opacity:.85; transform:scale(1); }
+  100% { opacity:0;   transform:scale(1.13); }
+}
+
+/* Point live */
+.fab-live {
+  position: absolute; top:6px; right:6px;
+  width:10px; height:10px; border-radius:50%;
+  background:#4CCEC0; border:2px solid #1E1E49;
+  animation: blink 1.4s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.65)} }
+
+/* ════════════════════════════════
+   WIDGET PANEL
+════════════════════════════════ */
+#widget {
+  position: fixed;
+  bottom: 86px;
+  right: 28px;
+  z-index: 1000;
+  width: 328px;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow:
+    0 2px 0 rgba(30,30,73,.05),
+    0 8px 20px rgba(30,30,73,.12),
+    0 24px 56px rgba(30,30,73,.18);
+  overflow: hidden;
+  transform-origin: bottom right;
+  transform: scale(.82) translateY(20px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform .38s cubic-bezier(.34,1.4,.64,1), opacity .22s ease;
+}
+#widget.open {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* Header */
+.wh {
+  background: #1E1E49;
+  padding: 13px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.wh-left { display:flex; align-items:center; gap:9px; }
+.wh-logo { width:34px; height:34px; object-fit:contain; border-radius:8px; }
+.wh-name {
+  font-size: 17px; font-weight: 800; color: #fff;
+  letter-spacing: -.3px; font-family: inherit;
+}
+.wh-close {
+  width:28px; height:28px; border-radius:50%;
+  background:rgba(255,255,255,.12); border:none; cursor:pointer;
+  color:#fff; font-size:13px; font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .15s;
+}
+.wh-close:hover { background:rgba(255,255,255,.22); }
+
+/* Zone délai */
+.wd {
+  background: linear-gradient(135deg,#1E1E49 0%,#26266a 100%);
+  padding: 12px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.wd-left .wd-lbl { font-size:11px; color:rgba(255,255,255,.52); font-weight:600; margin-bottom:2px; }
+.wd-left .wd-val { font-size:24px; font-weight:800; color:#4CCEC0; line-height:1; }
+.wd-left .wd-sub { font-size:10.5px; color:rgba(255,255,255,.38); margin-top:3px; }
+.wd-badge {
+  display:inline-flex; align-items:center; gap:5px;
+  background:rgba(76,206,192,.14); padding:4px 10px; border-radius:20px;
+  font-size:10px; font-weight:700; color:#4CCEC0;
+  border:1px solid rgba(76,206,192,.25);
+}
+.wd-dot { width:6px; height:6px; border-radius:50%; background:#4CCEC0; animation:blink 1.4s infinite; }
+
+/* Compteur */
+.wc {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:9px 14px;
+  background:rgba(76,206,192,.08);
+  border-bottom:1px solid rgba(76,206,192,.16);
+}
+.wc-lbl { font-size:11.5px; color:#2FA89C; font-weight:700; }
+.wc-val { font-size:14px; font-weight:800; color:#1E1E49; }
+
+/* Body */
+.wb { padding:14px; display:flex; flex-direction:column; gap:9px; }
+
+/* Btn principal */
+.btn-next {
+  width:100%; padding:14px 18px;
+  background:#1E1E49; color:#4CCEC0;
+  border:none; border-radius:12px; cursor:pointer;
+  font-size:15px; font-weight:800;
+  display:flex; align-items:center; justify-content:center; gap:7px;
+  box-shadow:0 4px 14px rgba(30,30,73,.22);
+  transition:background .15s, transform .14s;
+  letter-spacing:-.1px;
+}
+.btn-next:hover { background:#131330; transform:translateY(-1px); box-shadow:0 6px 20px rgba(30,30,73,.32); }
+.btn-next:active { transform:scale(.97); }
+.btn-next .arr { font-size:17px; transition:transform .2s; }
+.btn-next:hover .arr { transform:translateX(4px); }
+
+/* Séparateur */
+.w-or {
+  display:flex; align-items:center; gap:8px;
+  font-size:11.5px; color:#b0b5c4; font-weight:700; letter-spacing:.04em;
+}
+.w-or::before, .w-or::after { content:''; flex:1; height:1px; background:#ECEAF6; }
+
+/* Urgence */
+.btn-urg {
+  width:100%; padding:13px 14px;
+  background:#FEF2F2; border:1.5px solid #FECACA;
+  border-radius:12px; cursor:pointer;
+  display:flex; align-items:center; justify-content:space-between;
+  transition:background .14s, border-color .14s;
+}
+.btn-urg:hover { background:#FEE2E2; border-color:#FCA5A5; }
+.btn-urg-l { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:700; color:#DC2626; }
+.btn-urg-ico { font-size:15px; }
+.chev { font-size:13px; color:#DC2626; transition:transform .25s; }
+.chev.up { transform:rotate(180deg); }
+
+.urg-drop { overflow:hidden; max-height:0; transition:max-height .3s ease; }
+.urg-drop.open { max-height:180px; }
+.urg-opts {
+  background:#FEF2F2; border:1.5px solid #FECACA; border-top:none;
+  border-radius:0 0 12px 12px; padding:3px 0; margin-top:-4px;
+}
+.urg-opt {
+  width:100%; padding:10px 14px; background:none; border:none; cursor:pointer;
+  text-align:left; font-size:13px; font-weight:700; color:#991B1B;
+  display:flex; align-items:center; gap:8px;
+  transition:background .12s;
+}
+.urg-opt:hover { background:rgba(220,38,38,.07); }
+.odot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.o1 .odot { background:#F97316; }
+.o2 .odot { background:#DC2626; }
+.o3 .odot { background:#6B7280; }
+
+/* Footer */
+.wf {
+  padding:11px 14px;
+  border-top:1px solid #F0EEF8;
+  display:flex; align-items:center; justify-content:space-between;
+  background:#FAFAFD;
+}
+.wf-doc { display:flex; align-items:center; gap:9px; }
+.wf-av {
+  width:29px; height:29px; border-radius:50%;
+  background:#1E1E49; color:#4CCEC0;
+  font-size:10px; font-weight:800;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.wf-name { font-size:12px; font-weight:700; color:#1E1E49; }
+.wf-role { font-size:10.5px; color:#9ba3b5; margin-top:1px; }
+.wf-pts { font-size:12px; font-weight:700; color:#4CCEC0; text-align:right; line-height:1.45; }
+
+/* Toast */
+#toast {
+  position:fixed; bottom:90px; right:28px; z-index:2000;
+  background:#1E1E49; color:#fff;
+  padding:10px 16px; border-radius:100px;
+  font-size:13px; font-weight:700;
+  display:flex; align-items:center; gap:7px;
+  opacity:0; transform:translateY(8px);
+  transition:opacity .22s, transform .22s;
+  pointer-events:none;
+  box-shadow:0 6px 20px rgba(30,30,73,.3);
+}
+#toast.show { opacity:1; transform:translateY(0); }
+.tdot { width:7px; height:7px; border-radius:50%; background:#4CCEC0; }
+
+@media(max-width:480px){
+  #widget { width:calc(100vw - 24px); right:12px; bottom:78px; }
+  #fab { right:14px; bottom:18px; }
+  #toast { right:12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- FAB -->
+<div id="fab" onclick="toggle()">
+  <div class="ring"></div>
+  <div class="ring-2"></div>
+  <div class="fab-pill">
+    <img class="fab-logo" src="data:image/png;base64,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" alt="Fluxio">
+    <span class="fab-label">fluxio</span>
+  </div>
+  <div class="fab-live"></div>
+</div>
+
+<!-- WIDGET — pas d'overlay, juste le panel -->
+<div id="widget">
+  <div class="wh">
+    <div class="wh-left">
+      <img class="wh-logo" src="data:image/png;base64,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" alt="Fluxio">
+      <span class="wh-name">fluxio</span>
+    </div>
+    <button class="wh-close" onclick="close_()">✕</button>
+  </div>
+
+  <div class="wb">
+    <button class="btn-next" onclick="next()">
+      <span class="arr">→</span> Patient suivant
+    </button>
+    <div class="w-or">ou</div>
+    <div>
+      <button class="btn-urg" onclick="toggleUrg()">
+        <span class="btn-urg-l"><span class="btn-urg-ico">⚠</span>Déclarer une urgence</span>
+        <span class="chev" id="chev">∨</span>
+      </button>
+      <div class="urg-drop" id="dd">
+        <div class="urg-opts">
+          <button class="urg-opt o1" onclick="urgence('Urgence mineure signalée — retard estimé')">
+            <span class="odot"></span>Urgence mineure (retard estimé)
+          </button>
+          <button class="urg-opt o2" onclick="urgence('Urgence majeure — patients notifiés')">
+            <span class="odot"></span>Urgence majeure (sans durée)
+          </button>
+          <button class="urg-opt o3" onclick="urgence('Pause enregistrée')">
+            <span class="odot"></span>Pause / interruption
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wf">
+    <div class="wf-doc">
+      <div class="wf-av">MB</div>
+      <div>
+        <div class="wf-name">Dr. Martin</div>
+        <div class="wf-role">Médecin généraliste</div>
+      </div>
+    </div>
+    <div class="wf-pts" id="pfooter">13 patients<br>restants</div>
+  </div>
+</div>
+
+<div id="toast"><div class="tdot"></div><span id="tmsg"></span></div>
+
+<script>
+var open=false, urgOpen=false, patients=13, delay=25;
+
+function toggle(){ open?close_():openW(); }
+
+function openW(){
+  open=true;
+  document.getElementById('widget').classList.add('open');
+  // Stopper pulsation
+  ['ring','ring-2','fab-live'].forEach(function(c){
+    document.querySelectorAll('.'+c).forEach(function(el){
+      el.style.animationPlayState='paused'; el.style.opacity='0';
+    });
+  });
+}
+
+function close_(){
+  open=false; urgOpen=false;
+  document.getElementById('widget').classList.remove('open');
+  document.getElementById('dd').classList.remove('open');
+  document.getElementById('chev').classList.remove('up');
+  ['ring','ring-2','fab-live'].forEach(function(c){
+    document.querySelectorAll('.'+c).forEach(function(el){
+      el.style.animationPlayState='running'; el.style.opacity='';
+    });
+  });
+}
+
+function toggleUrg(){
+  urgOpen=!urgOpen;
+  document.getElementById('dd').classList.toggle('open',urgOpen);
+  document.getElementById('chev').classList.toggle('up',urgOpen);
+}
+
+function next(){
+  if(patients<=0){toast('✅ Tous les patients ont été vus !');return;}
+  patients--;
+  delay=Math.max(0,delay-2);
+  document.getElementById('pc').textContent=patients;
+  document.getElementById('pfooter').innerHTML=patients+' patients<br>restants';
+  document.getElementById('dv').textContent=delay>0?'+'+delay+' min':'À l\'heure';
+  document.getElementById('ds').textContent=(patients+1)+' patients notifiés automatiquement';
+  var b=document.querySelector('.btn-next');
+  b.style.background='#4CCEC0'; b.style.color='#1E1E49';
+  setTimeout(function(){b.style.background='';b.style.color='';},280);
+  toast('✓ Patient suivant · Notification envoyée');
+}
+
+function urgence(msg){
+  urgOpen=false;
+  document.getElementById('dd').classList.remove('open');
+  document.getElementById('chev').classList.remove('up');
+  toast('🔴 '+msg);
+}
+
+var tt;
+function toast(msg){
+  clearTimeout(tt);
+  document.getElementById('tmsg').textContent=msg;
+  var el=document.getElementById('toast');
+  el.classList.add('show');
+  tt=setTimeout(function(){el.classList.remove('show');},2600);
+}
+</script>
+</body>
+</html>
